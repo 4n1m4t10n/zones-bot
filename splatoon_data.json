@@ -1,0 +1,49 @@
+{
+  "modes": {
+    "Regular": "Regular Battle",
+    "League": "Challenge",
+    "Bankara": "Series",
+    "BankaraOpen": "Open",
+    "X": "X",
+    "FestRegular": "Splatfest Open",
+    "FestChallenge": "Splatfest Pro",
+    "FestTriColor": "Tricolor"
+  },
+  "rules": {
+    "Paint": "Turf War",
+    "Goal": "Rainmaker",
+    "Area": "Splat Zones",
+    "Lift": "Tower Control",
+    "Clam": "Clam Blitz",
+    "Tricolor": "Tricolor Turf War"
+  },
+  "stages": {
+    "1": "Scorch Gorge",
+    "2": "Eeltail Alley",
+    "3": "Hagglefish Market",
+    "4": "Undertow Spillway",
+    "5": "Um'ami Ruins",
+    "6": "Mincemeat Metalworks",
+    "7": "Brinewater Springs",
+    "8": "Barnacle & Dime",
+    "9": "Flounder Heights",
+    "10": "Hammerhead Bridge",
+    "11": "Museum d'Alfonsino",
+    "12": "Mahi-Mahi Resort",
+    "13": "Inkblot Art Academy",
+    "14": "Sturgeon Shipyard",
+    "15": "Mako Mart",
+    "16": "Wahoo World",
+    "17": "Humpback Pump Track",
+    "18": "Manta Maria",
+    "19": "Crableg Capital",
+    "20": "Shipshape Cargo Co.",
+    "21": "RoboROM-en",
+    "22": "Bluefin Depot",
+    "23": "Marlin Airport",
+    "24": "Lemuria Hub",
+    "25": "Grand Splatlands Bowl",
+    "26": "Urchin Underpass",
+    "-1": "???"
+  }
+}
