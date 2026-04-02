@@ -2,11 +2,12 @@ import json
 import requests
 import asyncio
 import os
-from datetime import datetime, timezone
+import datetime
 
 import discord
 from discord.ext import commands, tasks
 from addict import Dict as dotdict
+import aiofiles
 
 REQUEST_URL = "https://splatoon.oatmealdome.me/api/v1/three/versus/phases?count=12"
 MODES = ["Bankara", "BankaraOpen", "X"]
@@ -15,16 +16,19 @@ LETTERS = 'abcdefghijkl'
 
 SUB_FILE = ".subscribers.json"
 
-def load_subscribers():
+async def load_subscribers():
     if not os.path.exists(SUB_FILE):
-        return []
-    with open(SUB_FILE, "r") as f:
-        return json.load(f).get("users", [])
+        return {}
+    async with aiofiles.open(SUB_FILE, "r") as fh:
+        data = await fh.read()
+        return json.loads(data)
 
 
-def save_subscribers(users):
-    with open(SUB_FILE, "w") as f:
-        json.dump({"users": users}, f, indent=2)
+async def save_subscribers(users):
+    data = json.dumps(users, indent=2)
+    async with aiofiles.open(SUB_FILE, "w") as fh:
+        await fh.write(data)
+
 
 async def get_rot_data(retry=3, sleep=2):
     success = False
@@ -78,7 +82,7 @@ async def build_zones_message(modes):
                 break
 
         if sz is not None:
-            unix_time = int(datetime.fromisoformat(r.startTime).timestamp())
+            unix_time = int(datetime.datetime.fromisoformat(r.startTime).timestamp())
             out_data.append(
                 f"{LETTERS[len(out_data)]}) <t:{unix_time}:t> - {sz.mode} - {sz.stages[0]} / {sz.stages[1]}"
             )
@@ -88,6 +92,7 @@ async def build_zones_message(modes):
 
     return "No zones rotations found for the next 24H."
 
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} connected')
@@ -95,15 +100,16 @@ async def on_ready():
     await bot.change_presence(
         status=discord.Status.online,
         activity=discord.Activity(
-            type=discord.ActivityType.watching, 
+            type=discord.ActivityType.watching,
             name=".zones (x, series, open)"
         )
     )
 
-    if not daily_zones_task.is_running():
-        daily_zones_task.start()
+    if not daily_dm_task.is_running():
+        daily_dm_task.start()
 
-@bot.command()
+
+@bot.command(brief="show zones rotations", help="shows next 24H of rotations; specify x/open/series separated by spaces")
 async def zones(ctx, *modes):
     if not modes:
         modes = MODES
@@ -119,62 +125,67 @@ async def zones(ctx, *modes):
         msg = await build_zones_message(modes)
         await ctx.send(msg)
     except Exception as e:
-        await ctx.send("command failed")
-        print("command failed:", e)
+        print("zones failed:", e)
 
 
-@bot.command()
-async def zones_sub(ctx):
-    users = load_subscribers()
-    uid = ctx.author.id
+@bot.command(brief="sub for daily rotation notif; use @time to specify hour")
+async def sub(ctx, time=""):
+    try:
+        time = time.strip()
+        if not (time.startswith('<t:') and time.endswith('>')):
+            time = 0
+        else: # parse timestamp
+            start = len('<t:')
+            end = time.find(':', start)
+            time = int(time[start:end])
+        hour = datetime.datetime.utcfromtimestamp(time).hour
+        users = await load_subscribers()
+        uid = str(ctx.author.id)
+        users[uid] = hour
+        await save_subscribers(users)
+        await ctx.send(f"Subscribed for notifs daily at <t:{time}:t>.")
+    except Exception as e:
+        print("sub failed:", e)
 
-    if uid in users:
-        await ctx.send("youre already subscribed to daily zones DMs.")
+
+@bot.command(brief="unsubscribe from daily notifs, if subbed")
+async def unsub(ctx):
+    try:
+        users = await load_subscribers()
+        uid = str(ctx.author.id)
+        if uid in users:
+            users.pop(uid)
+            await save_subscribers(users)
+            await ctx.send("Unsubscribed.")
+        else:
+            await ctx.send("Already not subscribed.")
+    except Exception as e:
+        print("unsub failed:", e)
+
+
+
+task_times = [datetime.time(hour=i, tzinfo=datetime.timezone.utc) \
+    for i in range(24)]
+
+@tasks.loop(time=task_times)
+async def daily_dm_task():
+    cur_hour = datetime.datetime.now(datetime.timezone.utc).hour()
+    users = await load_subscribers()
+    if not users:
         return
-
-    users.append(uid)
-    save_subscribers(users)
-
-    await ctx.send("ok youre in")
-
-
-@bot.command()
-async def zones_unsub(ctx):
-    users = load_subscribers()
-    uid = ctx.author.id
-
-    if uid not in users:
-        await ctx.send("youre not in")
+    try:
+        msg = await build_zones_message(MODES)
+    except Exception as e:
+        print("something happened: ", e)
         return
-
-    users.remove(uid)
-    save_subscribers(users)
-
-    await ctx.send("ok youre out")
-
-
-@tasks.loop(minutes=1)
-async def daily_zones_task():
-    now = datetime.now(timezone.utc)
-
-    if (now.hour == 0) and (now.minute == 0):
-        users = load_subscribers()
-        if not users:
-            return
-
-        print("rise and shine for the 3k")
-
+    for user_id, user_hour in users.items():
+        if user_hour != cur_hour:
+            continue
         try:
-            msg = await build_zones_message(MODES)
+            uid = int(user_id)
+            user = await bot.fetch_user(uid)
+            await user.send(msg)
         except Exception as e:
-            print("something happened: ", e)
-            return
-
-        for user_id in users:
-            try:
-                user = await bot.fetch_user(user_id)
-                await user.send(msg)
-            except Exception as e:
-                print(f"failed to DM {user_id}:", e)
+            print(f"failed to DM {user_id}:", e)
 
 bot.run(cfg.token)
