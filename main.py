@@ -157,7 +157,7 @@ async def zones_unsub(ctx):
 async def daily_zones_task():
     now = datetime.now(timezone.utc)
 
-    if now.hour == 0 and now.minute == 0:
+    if (now.hour == 0) and (now.minute == 0):
         users = load_subscribers()
         if not users:
             return
