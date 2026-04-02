@@ -2,7 +2,7 @@ import json
 import requests
 import asyncio
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands, tasks
@@ -13,7 +13,7 @@ MODES = ["Bankara", "BankaraOpen", "X"]
 REVERSE_MODE_MAP = {'x': "X", 'open': 'BankaraOpen', 'series': 'Bankara'}
 LETTERS = 'abcdefghijkl'
 
-SUB_FILE = "subscribers.json"
+SUB_FILE = ".subscribers.json"
 
 def load_subscribers():
     if not os.path.exists(SUB_FILE):
@@ -155,7 +155,7 @@ async def zones_unsub(ctx):
 
 @tasks.loop(minutes=1)
 async def daily_zones_task():
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     if now.hour == 0 and now.minute == 0:
         users = load_subscribers()
