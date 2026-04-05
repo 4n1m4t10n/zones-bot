@@ -169,7 +169,7 @@ task_times = [datetime.time(hour=i, tzinfo=datetime.timezone.utc) \
 
 @tasks.loop(time=task_times)
 async def daily_dm_task():
-    cur_hour = datetime.datetime.now(datetime.timezone.utc).hour()
+    cur_hour = datetime.datetime.now(datetime.timezone.utc).hour
     users = await load_subscribers()
     if not users:
         return
