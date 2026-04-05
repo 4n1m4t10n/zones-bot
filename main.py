@@ -42,8 +42,54 @@ async def get_rot_data(retry=3, sleep=2):
         await asyncio.sleep(sleep)
 
     data = json.loads(res._content.decode()) if success else {}
-    rotations = data.get('normal') or []
-    return [dotdict(r) for r in rotations]
+
+    try:
+        nodes = data["data"]["bankaraSchedules"]["nodes"]
+    except Exception:
+        return []
+
+    rotations = []
+
+    for n in nodes:
+        rot = {
+            "startTime": n["startTime"],
+            "endTime": n["endTime"],
+            "Bankara": {
+                "rule": n["bankaraMatchSettings"][0]["vsRule"]["rule"],
+                "stages": [
+                    n["bankaraMatchSettings"][0]["vsStages"][0]["id"],
+                    n["bankaraMatchSettings"][0]["vsStages"][1]["id"]
+                ]
+            },
+            "BankaraOpen": {
+                "rule": n["bankaraMatchSettings"][1]["vsRule"]["rule"],
+                "stages": [
+                    n["bankaraMatchSettings"][1]["vsStages"][0]["id"],
+                    n["bankaraMatchSettings"][1]["vsStages"][1]["id"]
+                ]
+            },
+            "X": {
+                "rule": None,
+                "stages": []
+            }
+        }
+
+        rotations.append(dotdict(rot))
+
+    try:
+        x_nodes = data["data"]["xSchedules"]["nodes"]
+        for i in range(min(len(rotations), len(x_nodes))):
+            rotations[i]["X"] = {
+                "rule": x_nodes[i]["xMatchSetting"]["vsRule"]["rule"],
+                "stages": [
+                    x_nodes[i]["xMatchSetting"]["vsStages"][0]["id"],
+                    x_nodes[i]["xMatchSetting"]["vsStages"][1]["id"]
+                ]
+            }
+    except Exception:
+        pass
+
+    return rotations
 
 
 ### main:
@@ -70,10 +116,13 @@ async def build_zones_message(modes):
     for r in rotations:
         sz = None
         for m in modes:
-            if r[m].rule == "Area":
+            if r[m].rule and r[m].rule.lower() == "area":
                 sz = dotdict(
                     mode=spl_id_map.modes[m],
-                    stages=[spl_id_map.stages[str(i)] for i in r[m].stages]
+                    stages=[
+                        spl_id_map.stages[str(int(i.split("-")[-1]))]
+                        for i in r[m].stages
+                    ]
                 )
                 break
 
