@@ -3,6 +3,7 @@ import asyncio
 import datetime
 import aiohttp
 import os
+import datetime
 
 import discord
 from discord.ext import commands, tasks
@@ -85,6 +86,7 @@ async def build_zones_message(modes):
     if out_data:
         return "Zones rotations in the next 24 hours:\n" + "\n".join(out_data)
     return "No zones rotations found for the next 24H."
+
 
 @bot.event
 async def on_ready():
